@@ -30,12 +30,12 @@ on:
         type: boolean
         description: "是否启用lz4？"
         required: true
-        default: false
+        default: 'false'
       KPM:  # 新增 KPM 开关
         type: boolean
         description: "是否启用 KPM 功能？"
         required: true
-        default: false
+        default: 'false'
 
 jobs:
   build:
@@ -138,7 +138,7 @@ jobs:
           if [ "${{ github.event.inputs.KPM }}" = "true" ]; then
             echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
           fi
-
+          
           # Add VFS configuration settings
           echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -205,7 +205,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           # 在名称中添加 KPM 状态
-          name: SuKiSu${{ github.event.inputs.LZ4 && '_LZ4' || '_NoLZ4' }}${{ github.event.inputs.KPM && '_KPM' || '_NoKPM' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
+          name: SuKiSu_${{ github.event.inputs.LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
           path: kernel_workspace/kernel_platform/dist/AnyKernel3/*
       
       - name: Upload Image
