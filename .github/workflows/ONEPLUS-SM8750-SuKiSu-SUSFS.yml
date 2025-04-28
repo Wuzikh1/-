@@ -70,7 +70,18 @@ jobs:
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
-
+          
+      - name: Show selected inputs debug
+        run: |
+          echo "Selected CPU: ${{ github.event.inputs.CPU }}"
+          echo "Selected FEIL: ${{ github.event.inputs.FEIL }}"
+          echo "Selected CPUD: ${{ github.event.inputs.CPUD }}"
+          echo "Selected ANDROID_VERSION: ${{ github.event.inputs.ANDROID_VERSION }}"
+          echo "Selected KERNEL_VERSION: ${{ github.event.inputs.KERNEL_VERSION }}"
+          echo "Selected KERNEL_NAME: ${{ github.event.inputs.KERNEL_NAME }}"
+          echo "Selected LZ4: ${{ github.event.inputs.LZ4 }}"
+          echo "Selected VFS: ${{ github.event.inputs.KPM }}"
+          
       - name: Initialize repo and sync
         run: |
           mkdir kernel_workspace && cd kernel_workspace
