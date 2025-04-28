@@ -1,4 +1,4 @@
-name: OnePlus SM8750 AutoBuild with SukiSU Monitor
+name: OnePlus SM8750 AutoBuild with SukiSU Monitor (Updated)
 on:
   workflow_dispatch:
     inputs:
@@ -56,11 +56,15 @@ jobs:
       - name: Get latest commit
         id: suki_commit
         run: |
-          LATEST=$(curl -s -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ env.TARGET_REPO }}/commits/main | \
-            jq -r '.sha + "|" + .commit.committer.date')
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
-          echo "CURRENT_SHA=${LATEST%%|*}" >> $GITHUB_ENV
+          RESPONSE=$(curl -s -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ env.TARGET_REPO }}/commits/main)
+          
+          SHA=$(jq -r '.sha' <<< "$RESPONSE")
+          DATE=$(jq -r '.commit.committer.date' <<< "$RESPONSE")
+          
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "date=$DATE" >> $GITHUB_OUTPUT
+          echo "CURRENT_SHA=$SHA" >> $GITHUB_ENV
 
       - name: Restore last commit
         id: last_commit
@@ -72,19 +76,26 @@ jobs:
       - name: Compare commits
         id: compare
         run: |
+          # 读取上次记录的commit
           if [ -f "${{ env.TRACKER_FILE }}" ]; then
-            LAST=$(cat "${{ env.TRACKER_FILE }}")
-            echo "last=$LAST" >> $GITHUB_OUTPUT
+            LAST_SHA=$(cat "${{ env.TRACKER_FILE }}")
+            echo "last_sha=$LAST_SHA" >> $GITHUB_OUTPUT
           else
-            echo "last=null" >> $GITHUB_OUTPUT
+            echo "last_sha=null" >> $GITHUB_OUTPUT
           fi
 
-          if [ "${{ steps.suki_commit.outputs.latest }}" != "${{ steps.compare.outputs.last }}" ]; then
-            echo "::set-output name=changed::true"
+          # 比较commit差异
+          if [ "${{ steps.suki_commit.outputs.sha }}" != "${{ steps.compare.outputs.last_sha }}" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
             echo "${{ env.CURRENT_SHA }}" > "${{ env.TRACKER_FILE }}"
           else
-            echo "::set-output name=changed::false"
+            echo "changed=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Save new commit
+        if: steps.compare.outputs.changed == 'true'
+        run: |
+          echo "${{ env.CURRENT_SHA }}" > "${{ env.TRACKER_FILE }}"
 
   build:
     name: Build Kernel
@@ -126,8 +137,8 @@ jobs:
         run: |
           mkdir kernel_workspace && cd kernel_workspace
           repo init -u https://github.com/JiuGeFaCai/kernel_manifest.git \
-            -b refs/heads/oneplus/${{ github.event.inputs.CPU }} \
-            -m ${{ github.event.inputs.FEIL }}.xml --depth=1
+            -b refs/heads/oneplus/${{ inputs.CPU || 'sm8750' }} \
+            -m ${{ inputs.FEIL || 'oneplus_13' }}.xml --depth=1
           repo --trace sync -c -j$(nproc --all) --no-tags
           rm kernel_platform/common/android/abi_gki_protected_exports_* || echo "No protected exports!"
           rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo "No protected exports!"
@@ -137,28 +148,27 @@ jobs:
           cd kernel_workspace/kernel_platform
           curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
           cd ./KernelSU
-          KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10606)
+          KSU_VERSION=$(expr $(git rev-list --count main) "+" 10606)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
-          export KSU_VERSION=$KSU_VERSION
           sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
 
       - name: Set up susfs
         run: |
           cd kernel_workspace
-          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
+          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ inputs.ANDROID_VERSION || 'android15' }}-${{ inputs.KERNEL_VERSION || '6.6' }}
           git clone https://github.com/ExmikoN/SukiSU_patch.git
 
           cd kernel_platform        
-          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
+          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.ANDROID_VERSION || 'android15' }}-${{ inputs.KERNEL_VERSION || '6.6' }}.patch ./common/
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
           cp -r ../SukiSU_patch/other/lz4k/include/linux/* ./common/include/linux
           cp -r ../SukiSU_patch/other/lz4k/lib/* ./common/lib
           cp -r ../SukiSU_patch/other/lz4k/crypto/* ./common/crypto
           cd ./common
-          sed -i 's/-32,12 +32,38/-32,11 +32,37/g' 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch
-          sed -i '/#include <trace\/hooks\/fs.h>/d' 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch
-          patch -p1 < 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch || true
+          sed -i 's/-32,12 +32,38/-32,11 +32,37/g' 50_add_susfs_in_gki-${{ inputs.ANDROID_VERSION || 'android15' }}-${{ inputs.KERNEL_VERSION || '6.6' }}.patch
+          sed -i '/#include <trace\/hooks\/fs.h>/d' 50_add_susfs_in_gki-${{ inputs.ANDROID_VERSION || 'android15' }}-${{ inputs.KERNEL_VERSION || '6.6' }}.patch
+          patch -p1 < 50_add_susfs_in_gki-${{ inputs.ANDROID_VERSION || 'android15' }}-${{ inputs.KERNEL_VERSION || '6.6' }}.patch || true
           cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
           patch -p1 -F 3 < syscall_hooks.patch
 
@@ -169,17 +179,17 @@ jobs:
           patch -p1 -F 3 < 69_hide_stuff.patch
 
       - name: Apply lz4kd Patches
-        if: ${{ github.event.inputs.LZ4 == 'true' }}
+        if: ${{ inputs.LZ4 == 'true' }}
         run: |
           cd kernel_workspace/kernel_platform/common
-          cp ../../SukiSU_patch/other/lz4k_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4kd.patch ./
+          cp ../../SukiSU_patch/other/lz4k_patch/${{ inputs.KERNEL_VERSION || '6.6' }}/lz4kd.patch ./
           patch -p1 -F 3 < lz4kd.patch || true
 
       - name: Add SUSFS Configuration Settings
         run: |
           cd kernel_workspace/kernel_platform
           echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
-          if [ "${{ github.event.inputs.KPM }}" = "true" ]; then
+          if [ "${{ inputs.KPM }}" = "true" ]; then
             echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
           fi
           echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/gki_defconfig
@@ -210,7 +220,7 @@ jobs:
       - name: Add make name
         run: |
           cd kernel_workspace/kernel_platform
-          sed -i 's/res="\$res\$(cat "\$file")"/res="${{ github.event.inputs.KERNEL_NAME }}"/g' ./common/scripts/setlocalversion
+          sed -i 's/res="\$res\$(cat "\$file")"/res="${{ inputs.KERNEL_NAME || '-android15-8-g013ec21bba94-abogki383916444' }}"/g' ./common/scripts/setlocalversion
 
       - name: Build kernel
         run: |
@@ -229,7 +239,7 @@ jobs:
       - name: Prepare AnyKernel3
         run: |
           cd kernel_workspace/kernel_platform/dist/
-          if [ "${{ github.event.inputs.FEIL }}" = "oneplus_ace5_pro" ]; then
+          if [ "${{ inputs.FEIL || 'oneplus_13' }}" = "oneplus_ace5_pro" ]; then
             git clone -b a5p https://github.com/JiuGeFaCai/AnyKernel3.git --depth=1
           else
             git clone https://github.com/JiuGeFaCai/AnyKernel3.git --depth=1
@@ -241,7 +251,8 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SuKiSu_${{ github.event.inputs.LZ4 == 'true' && 'LZ4' || 'NoLZ4' }}_${{ github.event.inputs.KPM == 'true' && 'KPM' || 'NoKPM' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
+          name: SuKiSu_${{ inputs.LZ4 == 'true' && 'LZ4' || 'NoLZ4' }}_${{ inputs.KPM == 'true' && 'KPM' || 'NoKPM' }}_${{ env.KSUVER }}_${{ inputs.FEIL || 'oneplus_13' }}
           path: |
             kernel_workspace/kernel_platform/dist/AnyKernel3/*
             kernel_workspace/kernel_platform/dist/Image
+          retention-days: 7
