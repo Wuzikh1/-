@@ -205,7 +205,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           # 在名称中添加 KPM 状态
-          name: SuKiSu_${{ github.event.inputs.LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
+          name: SuKiSu${{ github.event.inputs.LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
           path: kernel_workspace/kernel_platform/dist/AnyKernel3/*
       
       - name: Upload Image
