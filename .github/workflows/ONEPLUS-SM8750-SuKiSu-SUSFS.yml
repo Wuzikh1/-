@@ -30,12 +30,12 @@ on:
         type: boolean
         description: "是否启用lz4？"
         required: true
-        default: 'false'
+        default: false
       KPM:  # 新增 KPM 开关
         type: boolean
         description: "是否启用 KPM 功能？"
         required: true
-        default: 'false'
+        default: false
 
 jobs:
   build:
@@ -134,7 +134,7 @@ jobs:
 
       - name: Apply lz4kd Patches
         run: |
-          if [ "${{ github.event.inputs.LZ4 }}" = "true" ]; then
+          if [ "${{ github.event.inputs.LZ4 }}" = 'true' ]; then
             cd kernel_workspace/kernel_platform/common
             cp ../../SukiSU_patch/other/lz4k_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4kd.patch ./
             patch -p1 -F 3 < lz4kd.patch || true
@@ -146,7 +146,7 @@ jobs:
           echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
 
           # 新增 KPM 条件判断
-          if [ "${{ github.event.inputs.KPM }}" = "true" ]; then
+          if [ "${{ github.event.inputs.KPM }}" = 'true' ]; then
             echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
           fi
           
