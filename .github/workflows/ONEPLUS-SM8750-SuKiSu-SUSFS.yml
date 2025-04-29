@@ -33,7 +33,7 @@ on:
         default: false
       KPM:  # 新增 KPM 开关
         type: boolean
-        description: "是否启用 KPM 功能？"
+        description: "是否启用KPM？"
         required: true
         default: false
 
