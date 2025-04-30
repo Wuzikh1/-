@@ -25,15 +25,17 @@ on:
       KERNEL_NAME:
         description: "修改内核名称"
         required: true
-        default: '-android15-8-g013ec21bba94-abogki383916444'
+        default: '-android15-8-g013ec21bba94-abogki383916444-byKUAN@ITXUU'
       ENABLE_LZ4:
-        description: "是否启用lz4压缩"
+        description: "启用LZ4压缩"
         required: true
-        default: 'true'
+        type: boolean
+        default: true
       ENABLE_KPM:
-        description: "是否启用kpm模块"
+        description: "启用KPM模块"
         required: true
-        default: 'true'
+        type: boolean
+        default: true
 
 jobs:
   build:
@@ -123,19 +125,16 @@ jobs:
           cd kernel_workspace/kernel_platform
           echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
 
-          # 条件添加KPM配置
-          if [ "${{ github.event.inputs.ENABLE_KPM }}" = "true" ]; then
+          if ${{ github.event.inputs.ENABLE_KPM }}; then
             echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
           fi
 
-          # 条件添加LZ4配置
-          if [ "${{ github.event.inputs.ENABLE_LZ4 }}" = "true" ]; then
+          if ${{ github.event.inputs.ENABLE_LZ4 }}; then
             echo "CONFIG_CRYPTO_LZ4HC=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4K=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
           fi
 
-          # 其他配置
           echo "CONFIG_CRYPTO_842=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -155,7 +154,6 @@ jobs:
           echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
          
-          # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
           cd common
           git add -A && git commit -a -m "BUILD Kernel"
@@ -189,11 +187,11 @@ jobs:
       - name: Upload AnyKernel3
         uses: actions/upload-artifact@v4
         with:
-         name: SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
-         path: ./AnyKernel3/*
+          name: SuKiSu${{ github.event.inputs.ENABLE_LZ4 && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
+          path: ./AnyKernel3/*
          
       - name: Upload Image
         uses: actions/upload-artifact@v4
         with:
-         name: Image_SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
-         path: kernel_workspace/kernel_platform/dist/Image
+          name: Image_SuKiSu${{ github.event.inputs.ENABLE_LZ4 && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
+          path: kernel_workspace/kernel_platform/dist/Image
