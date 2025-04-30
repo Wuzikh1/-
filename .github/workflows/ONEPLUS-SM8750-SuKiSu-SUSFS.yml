@@ -30,7 +30,7 @@ on:
         description: "启用LZ4压缩"
         required: true
         type: boolean
-        default: true
+        default: false
       ENABLE_KPM:
         description: "启用KPM模块"
         required: true
