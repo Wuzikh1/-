@@ -59,7 +59,17 @@ jobs:
         run: |
          git config --global user.name "wuzikh"
          git config --global user.email "wuzikh@163.com"
-
+         
+      - name: Show selected inputs debug
+        run: |
+          echo "Selected CPU: ${{ github.event.inputs.CPU }}"
+          echo "Selected FEIL: ${{ github.event.inputs.FEIL }}"
+          echo "Selected CPUD: ${{ github.event.inputs.CPUD }}"
+          echo "Selected ANDROID_VERSION: ${{ github.event.inputs.ANDROID_VERSION }}"
+          echo "Selected KERNEL_VERSION: ${{ github.event.inputs.KERNEL_VERSION }}"
+          echo "Selected ENABLE_LZ4: ${{ github.event.inputs.ENABLE_LZ4 }}"
+          echo "Selected ENABLE_KPM: ${{ github.event.inputs.ENABLE_KPM }}"
+          
       - name: Install dependencies
         run: |
          sudo apt update && sudo apt upgrade -y
@@ -113,7 +123,14 @@ jobs:
            cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
            patch -p1 -F 3 < syscall_hooks.patch
            echo "完成"
-
+           
+      - name: Apply Hide Stuff Patches
+        run: |
+          cd kernel_workspace/kernel_platform/common
+          cp ../../SukiSU_patch/69_hide_stuff.patch ./
+          echo "正在打隐藏应用补丁"
+          patch -p1 -F 3 < 69_hide_stuff.patch
+          
       - name: Apply lz4kd Patches
         run: |
           cd kernel_workspace/kernel_platform/common
