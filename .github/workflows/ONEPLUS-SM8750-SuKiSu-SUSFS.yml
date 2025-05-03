@@ -210,12 +210,20 @@ jobs:
          rm -f Image
          mv oImage Image
          
-      - name: Make AnyKernel3
+      - name: Package Artifacts
         run: |
-         git clone https://github.com/JiuGeFaCai/AnyKernel3.git --depth=1      
-         rm -rf ./AnyKernel3/.git
-         rm -rf ./AnyKernel3/push.sh
-         cp kernel_workspace/kernel_platform/dist/Image ./AnyKernel3/
+         # 确保进入正确目录
+         cd kernel_workspace/kernel_platform/dist/
+         # 克隆 AnyKernel3 模板
+         git clone https://github.com/JiuGeFaCai/AnyKernel3.git --depth=1
+         # 清理无用文件
+         rm -rf ./AnyKernel3/.git ./AnyKernel3/push.sh
+         # 复制构建好的 Image
+         cp Image ./AnyKernel3/
+         # 压缩为 zip 文件
+         zip -r AnyKernel3_${{ env.KSUVER }}.zip AnyKernel3/
+         # 重命名 Image 文件以包含版本号
+         mv Image Image_${{ env.KSUVER }}
 
       - name: Upload AnyKernel3
         uses: actions/upload-artifact@v4
@@ -228,3 +236,23 @@ jobs:
         with:
           name: Image_SuKiSu${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
           path: kernel_workspace/kernel_platform/dist/Image
+         
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: ${{ success() }}  # 仅在构建成功时运行
+        with:
+          tag_name: "v${{ env.KSUVER }}"  # 使用 KSUVER 作为唯一标签
+          name: "SuKiSu Kernel (${{ env.KSUVER }})"
+          body: |
+            ​**构建参数**​
+            - CPU 分支: `${{ github.event.inputs.CPU }}`
+            - 配置文件: `${{ github.event.inputs.FEIL }}`
+            - Android 版本: `${{ github.event.inputs.ANDROID_VERSION }}`
+            - 内核版本: `${{ github.event.inputs.KERNEL_VERSION }}`
+            - LZ4 压缩: `${{ github.event.inputs.ENABLE_LZ4 }}`
+            - KPM 模块: `${{ github.event.inputs.ENABLE_KPM }}`            
+          files: |  # 上传两个文件
+            kernel_workspace/kernel_platform/dist/AnyKernel3_${{ env.KSUVER }}.zip
+            kernel_workspace/kernel_platform/dist/Image_${{ env.KSUVER }}
+          draft: false
+          prerelease: false
