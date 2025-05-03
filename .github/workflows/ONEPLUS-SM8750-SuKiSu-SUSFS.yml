@@ -1,4 +1,4 @@
-name: OnePlus SM8750 Build SuKiSu SUSFS
+name: OnePlus13 Build SuKiSu SUSFS
 on:
   workflow_dispatch:
     inputs:
@@ -37,13 +37,14 @@ on:
         type: boolean
         default: true
 
+env:
+  KERNEL_WORKSPACE: ${{ github.workspace }}/kernel_workspace
+  KERNEL_PLATFORM: ${{ github.workspace }}/kernel_workspace/kernel_platform
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
-      CCACHE_NOHASHDIR: "true"
-      CCACHE_HARDLINK: "true"
     steps:
       - name: Maximize build space
         uses: easimon/maximize-build-space@master
@@ -57,8 +58,8 @@ jobs:
           
       - name: Configure Git
         run: |
-         git config --global user.name "wuzikh"
-         git config --global user.email "wuzikh@163.com"
+          git config --global user.name "wuzikh"
+          git config --global user.email "wuzikh@163.com"
          
       - name: Show selected inputs debug
         run: |
@@ -72,59 +73,57 @@ jobs:
           
       - name: Install dependencies
         run: |
-         sudo apt update && sudo apt upgrade -y
-         sudo apt install -y python3 git curl
-
+          sudo apt update && sudo apt upgrade -y
+          sudo apt install -y python3 git curl
+          
       - name: Install repo tool
         run: |
-         curl https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
-         chmod a+x ~/repo
-         sudo mv ~/repo /usr/local/bin/repo
-
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
+          chmod a+x ~/repo
+          sudo mv ~/repo /usr/local/bin/repo
+          
       - name: Initialize repo and sync
         run: |
-         mkdir kernel_workspace && cd kernel_workspace
-         repo init -u https://github.com/JiuGeFaCai/kernel_manifest.git -b refs/heads/oneplus/${{ github.event.inputs.CPU }} -m ${{ github.event.inputs.FEIL }}.xml --depth=1
-         repo --trace sync -c -j$(nproc --all) --no-tags
-         rm kernel_platform/common/android/abi_gki_protected_exports_* || echo "No protected exports!"
-         rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo "No protected exports!"
+          mkdir kernel_workspace && cd kernel_workspace
+          repo init -u https://github.com/JiuGeFaCai/kernel_manifest.git -b refs/heads/oneplus/${{ github.event.inputs.CPU }} -m ${{ github.event.inputs.FEIL }}.xml --depth=1
+          repo --trace sync -c -j$(nproc --all) --no-tags
+          rm kernel_platform/common/android/abi_gki_protected_exports_* || echo "No protected exports!"
+          rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo "No protected exports!"
          
       - name: Set up SukiSU
+        id: setup_sukisu
         run: |
-         cd kernel_workspace/kernel_platform
-         curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
-         cd ./KernelSU
-         KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10606)
-         echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
-         export KSU_VERSION=$KSU_VERSION
-         sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
+          cd kernel_workspace/kernel_platform
+          curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
+          cd ./KernelSU
+          KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10606)
+          echo "KSUVER=${KSU_VERSION}" >> $GITHUB_ENV
+          echo "KSU_VERSION=${KSU_VERSION}" >> $GITHUB_OUTPUT
+          sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
         
       - name: Set up susfs
         run: |
-           cd kernel_workspace
-           git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
-           git clone https://github.com/ExmikoN/SukiSU_patch.git
-
-           cd kernel_platform        
-           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
-           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
-           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
-           #lz4k
-           if ${{ github.event.inputs.ENABLE_LZ4 }}; then
-             cp -r ../SukiSU_patch/other/lz4k/include/linux/* ./common/include/linux
-             cp -r ../SukiSU_patch/other/lz4k/lib/* ./common/lib
-             cp -r ../SukiSU_patch/other/lz4k/crypto/* ./common/crypto
-           fi
-           # Apply patches
-           cd ./common
-
-           sed -i 's/-32,12 +32,38/-32,11 +32,37/g' 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch
-           sed -i '/#include <trace\/hooks\/fs.h>/d' 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch
-
-           patch -p1 < 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch || true
-           cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
-           patch -p1 -F 3 < syscall_hooks.patch
-           echo "完成"
+          cd kernel_workspace
+          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
+          git clone https://github.com/ExmikoN/SukiSU_patch.git
+          cd kernel_platform        
+          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
+          cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
+          cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
+          
+          if ${{ github.event.inputs.ENABLE_LZ4 }}; then
+            cp -r ../SukiSU_patch/other/lz4k/include/linux/* ./common/include/linux
+            cp -r ../SukiSU_patch/other/lz4k/lib/* ./common/lib
+            cp -r ../SukiSU_patch/other/lz4k/crypto/* ./common/crypto
+          fi
+          
+          cd ./common
+          sed -i 's/-32,12 +32,38/-32,11 +32,37/g' 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch
+          sed -i '/#include <trace\/hooks\/fs.h>/d' 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch
+          patch -p1 < 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch || true
+          cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
+          patch -p1 -F 3 < syscall_hooks.patch
+          echo "完成"
            
       - name: Apply Hide Stuff Patches
         run: |
@@ -134,30 +133,26 @@ jobs:
           patch -p1 -F 3 < 69_hide_stuff.patch
           
       - name: Apply lz4kd Patches
+        if: ${{ github.event.inputs.ENABLE_LZ4 }}
         run: |
-          if ${{ github.event.inputs.ENABLE_LZ4 }}; then
-            cd kernel_workspace/kernel_platform/common
-            cp ../../SukiSU_patch/other/lz4k_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4kd.patch ./
-            patch -p1 -F 3 < lz4kd.patch || true
-          fi
+          cd kernel_workspace/kernel_platform/common
+          cp ../../SukiSU_patch/other/lz4k_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4kd.patch ./
+          patch -p1 -F 3 < lz4kd.patch || true
            
       - name: Add SUSFS Configuration Settings
         run: |
           cd kernel_workspace/kernel_platform
           echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
-
           if ${{ github.event.inputs.ENABLE_KPM }}; then
             echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
           else
             rm -rf ./KernelSU/kpm 2>/dev/null || true
           fi
-
           if ${{ github.event.inputs.ENABLE_LZ4 }}; then
             echo "CONFIG_CRYPTO_LZ4HC=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4K=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
           fi
-
           echo "CONFIG_CRYPTO_842=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -183,65 +178,58 @@ jobs:
           
       - name: Add make name
         run: |
-         cd kernel_workspace/kernel_platform
-         sed -i 's/res="\$res\$(cat "\$file")"/res="${{ github.event.inputs.KERNEL_NAME }}"/g' ./common/scripts/setlocalversion
-
-
+          cd kernel_workspace/kernel_platform
+          sed -i 's/res="\$res\$(cat "\$file")"/res="${{ github.event.inputs.KERNEL_NAME }}"/g' ./common/scripts/setlocalversion
+          
       - name: Add sched_ext
         run: |
-         cd kernel_workspace/kernel_platform/
-         git clone https://github.com/JiuGeFaCai/sched_ext.git
-         cp -r ./sched_ext/* ./common/kernel/sched
-         rm -rf ./sched_ext/.git
-         cd common/kernel/sched
-         sed -i.bak '/# include "ext.c"/a\# include "hmbird_sched_proc_main.c"\n#endif\n\n#ifdef CONFIG_SLIM_SCHED\n# include "slim_sysctl.c"' build_policy.c
+          cd kernel_workspace/kernel_platform/
+          git clone https://github.com/JiuGeFaCai/sched_ext.git
+          cp -r ./sched_ext/* ./common/kernel/sched
+          rm -rf ./sched_ext/.git
+          cd common/kernel/sched
+          sed -i.bak '/# include "ext.c"/a\# include "hmbird_sched_proc_main.c"\n#endif\n\n#ifdef CONFIG_SLIM_SCHED\n# include "slim_sysctl.c"' build_policy.c
                    
       - name: Build kernel
         run: |
-         cd kernel_workspace/kernel_platform
-         tools/bazel run --config=fast --config=stamp --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
-
+          cd kernel_workspace/kernel_platform
+          tools/bazel run --config=fast --config=stamp --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
+          
       - name: Make AnyKernel3
         run: |
-         cd kernel_workspace/kernel_platform/dist/
-         curl -LO https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.11-beta/patch_linux
-         chmod +x patch_linux
-         ./patch_linux
-         rm -f Image
-         mv oImage Image
+          cd kernel_workspace/kernel_platform/dist/
+          curl -LO https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.11-beta/patch_linux
+          chmod +x patch_linux
+          ./patch_linux
+          rm -f Image
+          mv oImage Image
          
       - name: Package Artifacts
         run: |
-         # 确保进入正确目录
-         cd kernel_workspace/kernel_platform/dist/
-         # 克隆 AnyKernel3 模板
-         git clone https://github.com/JiuGeFaCai/AnyKernel3.git --depth=1
-         # 清理无用文件
-         rm -rf ./AnyKernel3/.git ./AnyKernel3/push.sh
-         # 复制构建好的 Image
-         cp Image ./AnyKernel3/
-         # 压缩为 zip 文件
-         zip -r SuKiSu${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}.zip AnyKernel3/
-         # 重命名 Image 文件以包含版本号
-         mv Image Image_${{ env.KSUVER }}
-
+          cd kernel_workspace/kernel_platform/dist/
+          git clone https://github.com/JiuGeFaCai/AnyKernel3.git --depth=1
+          rm -rf ./AnyKernel3/.git ./AnyKernel3/push.sh
+          cp Image ./AnyKernel3/
+          zip -r SuKiSu${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}.zip AnyKernel3/
+          mv Image Image${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
+          
       - name: Upload AnyKernel3
         uses: actions/upload-artifact@v4
         with:
           name: SuKiSu${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
-          path: ./AnyKernel3/*
+          path: kernel_workspace/kernel_platform/dist/AnyKernel3/*
          
       - name: Upload Image
         uses: actions/upload-artifact@v4
         with:
-          name: Image_SuKiSu${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
-          path: kernel_workspace/kernel_platform/dist/Image
+          name: Image${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
+          path: kernel_workspace/kernel_platform/dist/Image_${{ env.KSUVER }}
          
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v1
-        if: ${{ success() }}  # 仅在构建成功时运行
+        if: ${{ success() }}
         with:
-          tag_name: "v${{ env.KSUVER }}"  # 使用 KSUVER 作为唯一标签
+          tag_name: "v${{ env.KSUVER }}"
           name: "SuKiSu Kernel (${{ env.KSUVER }})"
           body: |
             ​**构建参数**​
@@ -251,8 +239,8 @@ jobs:
             - 内核版本: `${{ github.event.inputs.KERNEL_VERSION }}`
             - LZ4 压缩: `${{ github.event.inputs.ENABLE_LZ4 }}`
             - KPM 模块: `${{ github.event.inputs.ENABLE_KPM }}`            
-          files: |  # 上传两个文件
-            kernel_workspace/kernel_platform/dist/AnyKernel3_${{ env.KSUVER }}.zip
-            kernel_workspace/kernel_platform/dist/Image_${{ env.KSUVER }}
+          files: |
+            kernel_workspace/kernel_platform/dist/SuKiSu${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}.zip
+            kernel_workspace/kernel_platform/dist/Image${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
           draft: false
           prerelease: false
