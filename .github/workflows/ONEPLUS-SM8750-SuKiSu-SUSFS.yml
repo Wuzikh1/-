@@ -221,7 +221,7 @@ jobs:
          # 复制构建好的 Image
          cp Image ./AnyKernel3/
          # 压缩为 zip 文件
-         zip -r AnyKernel3_${{ env.KSUVER }}.zip AnyKernel3/
+         zip -r SuKiSu${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}.zip AnyKernel3/
          # 重命名 Image 文件以包含版本号
          mv Image Image_${{ env.KSUVER }}
 
