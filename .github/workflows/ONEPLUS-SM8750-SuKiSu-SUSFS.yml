@@ -1,4 +1,4 @@
-name: OnePlus SM8750 Build SuKiSu SUSFS (Fixed)
+name: OnePlus13 Build SuKiSu SUSFS
 on:
   workflow_dispatch:
     inputs:
