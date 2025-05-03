@@ -223,7 +223,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Image${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
-          path: kernel_workspace/kernel_platform/dist/Image_${{ env.KSUVER }}
+          path: kernel_workspace/kernel_platform/dist/Image${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
          
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v1
