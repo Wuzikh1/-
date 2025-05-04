@@ -210,20 +210,20 @@ jobs:
           git clone https://github.com/Wuzikh1/AnyKernel3.git --depth=1
           rm -rf ./AnyKernel3/.git ./AnyKernel3/push.sh
           cp Image ./AnyKernel3/
-          zip -r SuKiSu${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}.zip AnyKernel3/
-          mv Image Image${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
+          zip -r SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}.zip AnyKernel3/
+          mv Image Image_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}
           
       - name: Upload AnyKernel3
         uses: actions/upload-artifact@v4
         with:
-          name: SuKiSu${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
+          name: SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}
           path: kernel_workspace/kernel_platform/dist/AnyKernel3/*
          
       - name: Upload Image
         uses: actions/upload-artifact@v4
         with:
-          name: Image${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
-          path: kernel_workspace/kernel_platform/dist/Image${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
+          name: Image_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}
+          path: kernel_workspace/kernel_platform/dist/Image_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}
          
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v1
@@ -240,7 +240,7 @@ jobs:
             - LZ4 压缩: `${{ github.event.inputs.ENABLE_LZ4 }}`
             - KPM 模块: `${{ github.event.inputs.ENABLE_KPM }}`            
           files: |
-            kernel_workspace/kernel_platform/dist/SuKiSu${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}.zip
-            kernel_workspace/kernel_platform/dist/Image${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
+            kernel_workspace/kernel_platform/dist/AnyKernel3/SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}.zip
+            kernel_workspace/kernel_platform/dist/Image_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}
           draft: false
           prerelease: false
