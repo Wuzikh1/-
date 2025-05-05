@@ -210,7 +210,13 @@ jobs:
           git clone https://github.com/Wuzikh1/AnyKernel3.git --depth=1
           rm -rf ./AnyKernel3/.git ./AnyKernel3/push.sh
           cp Image ./AnyKernel3/
-          zip -r SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}.zip AnyKernel3/
+    
+          # 进入 AnyKernel3 目录后再打包
+          cd AnyKernel3
+          zip -r ../SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}.zip .
+    
+          # 回到上级目录继续操作
+          cd ..
           mv Image Image_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}${{ github.event.inputs.ENABLE_LZ4 == 'true' && '_LZ4' || '' }}${{ github.event.inputs.ENABLE_KPM == 'true' && '_KPM' || '' }}
           
       - name: Upload AnyKernel3
