@@ -1,62 +1,35 @@
-name: Check SukiSU Updates
-
+name: SukiSU Update Monitor
 on:
   schedule:
-    - cron: '0 */6 * * *'  # 每6小时检查一次
-  workflow_dispatch:  # 支持手动触发
+    - cron: '0 */2 * * *'  # 每2小时检测一次
 
 jobs:
   check-update:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Get latest commit
-        id: get_commit
-        run: |
-          LATEST_COMMIT=$(curl -s https://api.github.com/repos/ShirkNeko/SukiSU-Ultra/commits/main | jq -r '.sha')
-          echo "LATEST_COMMIT=$LATEST_COMMIT" >> $GITHUB_OUTPUT
-
-      - name: Compare commits
-        id: compare
-        run: |
-          CURRENT_COMMIT=$(cat .sukisu_commit || echo "init")
-          echo "CURRENT_COMMIT=$CURRENT_COMMIT" >> $GITHUB_OUTPUT
-          if [ "$CURRENT_COMMIT" != "${{ steps.get_commit.outputs.LATEST_COMMIT }}" ]; then
-            echo "UPDATE_AVAILABLE=true" >> $GITHUB_OUTPUT
-            echo "${{ steps.get_commit.outputs.LATEST_COMMIT }}" > .sukisu_commit
-          else
-            echo "UPDATE_AVAILABLE=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Commit changes
-        if: steps.compare.outputs.UPDATE_AVAILABLE == 'true'
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add .sukisu_commit
-          git commit -m "Update SukiSU commit hash"
-          git push
-
-      - name: Trigger build
-        if: steps.compare.outputs.UPDATE_AVAILABLE == 'true'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'OnePlus13 Build SuKiSu SUSFS',  # 例如: build.yml
-              ref: 'main',
-              inputs: {
-                CPU: 'sm8750',
-                FEIL: 'oneplus_13',
-                CPUD: 'sun',
-                ANDROID_VERSION: 'android15',
-                KERNEL_VERSION: '6.6',
-                KERNEL_NAME: '-android15-8-g013ec21bba94-abogki383916444',
-                ENABLE_LZ4: false,
-                ENABLE_KPM: true
-              }
-            })
+    - name: 获取最新提交哈希
+      id: get_commit
+      run: |
+        LATEST_COMMIT=$(curl -s https://api.github.com/repos/ShirkNeko/SukiSU-Ultra/commits/main | jq -r '.sha')
+        echo "current=$LATEST_COMMIT" >> $GITHUB_ENV
+        
+    - name: 触发主工作流
+      if: env.current != env.LAST_SAVED
+      uses: actions/github-script@v6
+      with:
+        script: |
+          await github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'ONEPLUS-SM8750-SuKiSu-SUSFS.yml', # 替换为实际工作流文件名
+            ref: 'main',
+            inputs: {
+              CPU: 'sm8750',
+              FEIL: 'oneplus_13',
+              # 其他默认参数...
+            }
+          })
+    - name: 保存当前状态
+      if: env.current != env.LAST_SAVED
+      run: |
+        echo "LAST_SAVED=${{ env.current }}" >> $GITHUB_ENV
