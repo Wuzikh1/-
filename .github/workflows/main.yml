@@ -2,6 +2,7 @@ name: SukiSU Update Monitor
 on:
   schedule:
     - cron: '0 */2 * * *'  # 每2小时检测一次
+  workflow_dispatch:  # 支持手动触发
 
 jobs:
   check-update:
